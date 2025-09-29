@@ -2,6 +2,7 @@ const deliveryModel = require("../schema/delivery");
 const userModel = require("../schema/user");
 const transporter = require("../utility/sendEmail")
 const joi = require("joi");
+require("dotenv").config();
 
 // 1. Rider views all pending deliveries
 const viewPendingDeliveries = async (req, res) => {
@@ -47,8 +48,8 @@ const acceptDelivery = async (req, res) => {
 
     // send email
     await transporter.sendMail({
-      from: "maxmosh8@gmail.com",
-      to: "moshtechy@gmail.com",
+      from: process.env.SENDER_EMAIL,
+      to: customer.email,
       subject: "Delivery Accepted",
       html: `
         <h2>Hello ${customer.fullName},</h2>
@@ -114,8 +115,8 @@ const updateDeliveryStatus = async (req, res) => {
 
     if (customer && rider) {
       await transporter.sendMail({
-        from: "maxmosh8@gmail.com",
-        to: "moshtechy@gmail.com", // dynamic email
+        from: process.env.SENDER_EMAIL,
+        to: customer.email,
         subject: `Delivery has been ${status}`,
         html: `
           <h2>Hello ${customer.fullName},</h2>
