@@ -11,35 +11,33 @@ const paystackController = require("./controller/paystackController");
 const app = express();
 const port = 3000;
 
-// ================= PAYSTACK WEBHOOK =================
-// ✅ Mount paystackRouter under /paystack
-// Webhook inside paystackRouter must use express.raw()
+// PAYSTACK WEBHOOK
 app.post(
   "/paystack/webhook",
   express.raw({ type: "application/json" }),
   paystackController.paystackWebhook
 );
 
-// ================= GENERAL MIDDLEWARE =================
+// GENERAL MIDDLEWARE 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ================= ROUTES =================
+// ROUTES 
 app.use("/auth", authRouter);
 app.use("/admin", adminRouter);
 app.use("/create", customerRouter);
 app.use("/", customerRouter);
 app.use("/paystack", paystackRouter); // other paystack routes (init payment etc.)
 
-// ================= DB CONNECTION =================
+// DB CONNECTION
 mongoose
   .connect(process.env.DB_url)
-  .then(() => console.log("✅ Connected to the database"))
-  .catch((err) => console.log("❌ DB connection error:", err));
+  .then(() => console.log(" Connected to the database"))
+  .catch((err) => console.log(" DB connection error:", err));
 
-// ================= START SERVER =================
+// START SERVER
 app.listen(port, () => {
-  console.log(`🚀 Server is running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
 });
 
 module.exports = app;

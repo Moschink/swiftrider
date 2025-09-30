@@ -23,7 +23,7 @@ const initializePayment = async (req, res) => {
       {
         email: userEmail,
         amount: delivery.cost * 100, // Paystack expects kobo
-        metadata: { deliveryId } // 👈 send deliveryId to webhook
+        metadata: { deliveryId } // send deliveryId to webhook
       },
       {
         headers: {
@@ -48,7 +48,7 @@ const paystackWebhook = async (req, res) => {
   try {
     const secret = process.env.PAYSTACK_SECRET_KEY;
 
-    // ✅ req.body is a Buffer because of express.raw()
+    // req.body is a Buffer because of express.raw()
     const hash = crypto
       .createHmac("sha512", secret)
       .update(req.body) // raw buffer
@@ -59,14 +59,14 @@ const paystackWebhook = async (req, res) => {
       return res.sendStatus(401); // Unauthorized
     }
 
-    // ✅ Parse raw buffer into JSON
+    // Parse raw buffer into JSON
     const eventData = JSON.parse(req.body.toString());
 
     console.log("=============== Webhook Response ====================");
     console.log(eventData);
 
     if (eventData.event === "charge.success") {
-      const deliveryId = eventData.data.metadata.deliveryId; // 👈 safe now
+      const deliveryId = eventData.data.metadata.deliveryId;
       const reference = eventData.data.reference;
 
       // Mark delivery as paid
@@ -76,7 +76,7 @@ const paystackWebhook = async (req, res) => {
         { new: true }
       );
 
-      console.log("✅ Delivery payment confirmed:", delivery);
+      console.log(" Delivery payment confirmed:", delivery);
     }
 
     return res.sendStatus(200); // ACK to Paystack
