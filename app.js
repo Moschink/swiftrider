@@ -1,37 +1,39 @@
 const express = require('express');
-// const shopRouter = require("./router");
 require("dotenv").config();
+const mongoose = require("mongoose");
+
 const authRouter = require("./router/userRouter");
 const customerRouter = require("./router/customerRouter");
 const adminRouter = require("./router/adminRouter");
-const paystackRouter = require("./router/paystackRouter")
-const mongoose = require("mongoose")
-// const userModel = require("./schema/user");
+const paystackRouter = require("./router/paystackRouter");
 
-// const authControlller = require("./router/authController");
 const app = express();
 const port = 3000;
-app.use(express.json());
 
+// ✅ Use express.json() for all routes *except* /webhook
+app.use((req, res, next) => {
+  if (req.originalUrl === "/webhook") {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
+
+// ================= ROUTES =================
 app.use("/auth", authRouter);
 app.use("/admin", adminRouter);
 app.use("/create", customerRouter);
 app.use("/", customerRouter);
-app.use("/", customerRouter);
-app.use("/", customerRouter);
-app.use("/", customerRouter);
-app.use("/", customerRouter);
-app.use("/", paystackRouter);
+app.use("/", paystackRouter); // includes webhook + paystack routes
 
-
-
-
-
-// connect to database
+// ================= DB CONNECTION =================
 mongoose.connect(process.env.DB_url)
-  .then(() => console.log("Connected to the database"))
-  .catch((err) => console.log("An error occurred while trying to connect::::", err));
+  .then(() => console.log("✅ Connected to the database"))
+  .catch((err) => console.log("❌ DB connection error:", err));
 
+// ================= START SERVER =================
 app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log(`🚀 Server is running on port ${port}`);
 });
+
+module.exports = app;
