@@ -13,7 +13,6 @@ router.post("/initialize-payment", roleBasedAccess(["customer"]), paystackContro
 
 router.post(
   "/webhook",
-  express.raw({ type: "application/json" }),
   paystackController.paystackWebhook
 );
 

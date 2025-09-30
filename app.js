@@ -10,14 +10,12 @@ const paystackRouter = require("./router/paystackRouter");
 const app = express();
 const port = 3000;
 
-// ✅ Use express.json() for all routes *except* /webhook
-app.use((req, res, next) => {
-  if (req.originalUrl === "/webhook") {
-    next();
-  } else {
-    express.json()(req, res, next);
-  }
-});
+// ✅ Apply raw parser BEFORE mounting routes
+app.use("/webhook", express.raw({ type: "application/json" }));
+
+// ✅ Then apply JSON parser for all other routes
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ================= ROUTES =================
 app.use("/auth", authRouter);
