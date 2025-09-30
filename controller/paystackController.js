@@ -65,19 +65,19 @@ const paystackWebhook = async (req, res) => {
     console.log("=============== Webhook Response ====================");
     console.log(eventData);
 
-    if (eventData.event === "charge.success") {
-      const deliveryId = eventData.data.metadata.deliveryId;
-      const reference = eventData.data.reference;
+    // if (eventData.event === "charge.success") {
+    //   const deliveryId = eventData.data.metadata.deliveryId;
+    //   const reference = eventData.data.reference;
 
       // Mark delivery as paid
-      const delivery = await deliveryModel.findByIdAndUpdate(
-        deliveryId,
-        { status: "paid", paymentReference: reference },
-        { new: true }
-      );
+      // const delivery = await deliveryModel.findByIdAndUpdate(
+      //   deliveryId,
+      //   { status: "paid", paymentReference: reference },
+      //   { new: true }
+      // );
 
-      console.log(" Delivery payment confirmed:", delivery);
-    }
+    //   console.log(" Delivery payment confirmed:", delivery);
+    // }
 
     return res.sendStatus(200); // ACK to Paystack
   } catch (error) {
