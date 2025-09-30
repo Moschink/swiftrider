@@ -6,6 +6,7 @@ const authRouter = require("./router/userRouter");
 const customerRouter = require("./router/customerRouter");
 const adminRouter = require("./router/adminRouter");
 const paystackRouter = require("./router/paystackRouter");
+const paystackController = require("./controller/paystackController");
 
 const app = express();
 const port = 3000;
@@ -13,10 +14,10 @@ const port = 3000;
 // ================= PAYSTACK WEBHOOK =================
 // ✅ Mount paystackRouter under /paystack
 // Webhook inside paystackRouter must use express.raw()
-app.use(
-  "/paystack/",
+app.post(
+  "/paystack/webhook",
   express.raw({ type: "application/json" }),
-  paystackRouter
+  paystackController.paystackWebhook
 );
 
 // ================= GENERAL MIDDLEWARE =================

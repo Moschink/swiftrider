@@ -14,9 +14,5 @@ router.post(
   paystackController.initializePayment
 );
 
-// ================= WEBHOOK =================
-// ❌ Do NOT protect this route (Paystack is external, not logged in)
-// Mounted in app.js with express.raw()
-router.post("/webhook", paystackController.paystackWebhook);
 
 module.exports = router;
