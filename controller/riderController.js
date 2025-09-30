@@ -24,51 +24,56 @@ const acceptDelivery = async (req, res) => {
   try {
     const { deliveryId } = req.body;
 
-    // find the delivery
-    const delivery = await deliveryModel.findById(deliveryId);
+    // Find & update delivery in one step
+    const delivery = await deliveryModel.findOneAndUpdate(
+      { _id: deliveryId, status: "pending" },
+      { status: "accepted", riderId: req.decoded.ownerId },
+      { new: true }
+    );
+
     if (!delivery) {
-      return res.status(404).json({ error: "Delivery not found" });
+      return res.status(404).json({ error: "Delivery not found or already accepted" });
     }
 
-    if (delivery.status !== "pending") {
-      return res.status(400).json({ error: "Delivery already accepted or completed" });
-    }
-
-    // update delivery with rider
-    delivery.status = "accepted";
-    delivery.riderId = req.decoded.ownerId; // rider logged in
-    await delivery.save();
-
-    // find customer & rider
-    const customer = await userModel.findById(delivery.ownerId);
-    if (!customer) return res.status(404).json({ error: "Customer not found" });
-
-    const rider = await userModel.findById(delivery.riderId);
-    if (!rider) return res.status(404).json({ error: "Rider not found" });
-
-    // send email
-    await transporter.sendMail({
-      from: process.env.SENDER_EMAIL,
-      to: customer.email,
-      subject: "Delivery Accepted",
-      html: `
-        <h2>Hello ${customer.fullName},</h2>
-        <p>Your delivery request has been <b>accepted</b> by <b>${rider.fullName}</b>.</p>
-        <p>Please prepare your package. The rider will contact you shortly.</p>
-        <br/>
-        <p>Thank you for using our service!</p>
-      `
-    });
-
-    return res.status(200).json({
-      message: "Delivery accepted successfully & email sent",
+    //  Respond to client immediately
+    res.status(200).json({
+      message: "Delivery accepted successfully",
       delivery
     });
 
+    //  Background work: fetch users + send email
+    (async () => {
+      try {
+        const [customer, rider] = await Promise.all([
+          userModel.findById(delivery.ownerId),
+          userModel.findById(delivery.riderId)
+        ]);
+
+        if (customer && rider) {
+          await transporter.sendMail({
+            from: process.env.SENDER_EMAIL,
+            to: customer.email,
+            subject: "Delivery Accepted",
+            html: `
+              <h2>Hello ${customer.fullName},</h2>
+              <p>Your delivery request has been <b>accepted</b> by <b>${rider.fullName}</b>.</p>
+              <p>Please prepare your package. The rider will contact you shortly.</p>
+              <br/>
+              <p>Thank you for using our service!</p>
+            `
+          });
+          console.log(` Email sent to ${customer.email}`);
+        }
+      } catch (bgError) {
+        console.error("Background email error:", bgError.message);
+      }
+    })();
+
   } catch (error) {
-    return res.status(400).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
+
 
 
 const updateDeliveryStatus = async (req, res) => {
@@ -81,17 +86,18 @@ const updateDeliveryStatus = async (req, res) => {
       return res.status(400).json({ error: "Invalid status value" });
     }
 
+    // Find delivery
     const delivery = await deliveryModel.findById(deliveryId);
     if (!delivery) {
       return res.status(404).json({ error: "Delivery not found" });
     }
 
-    // Ensure this delivery is assigned to this rider
+    // Ensure delivery is assigned to this rider
     if (delivery.riderId?.toString() !== riderId.toString()) {
       return res.status(403).json({ error: "You are not assigned to this delivery" });
     }
 
-    // Enforce step-by-step transitions
+    // Validate status transition
     const currentStatus = delivery.status;
     const allowedTransitions = {
       accepted: ["picked-up"],
@@ -105,35 +111,45 @@ const updateDeliveryStatus = async (req, res) => {
       });
     }
 
-    // Update status
+    //  Update and save
     delivery.status = status;
     await delivery.save();
 
-    // find customer & rider for email
-    const customer = await userModel.findById(delivery.ownerId);
-    const rider = await userModel.findById(delivery.riderId);
-
-    if (customer && rider) {
-      await transporter.sendMail({
-        from: process.env.SENDER_EMAIL,
-        to: customer.email,
-        subject: `Delivery has been ${status}`,
-        html: `
-          <h2>Hello ${customer.fullName},</h2>
-          <p>Your delivery request has been <b>${status}</b> by rider <b>${rider.fullName}</b>.</p>
-          <br/>
-          <p>Thank you for using our service!!</p>
-        `
-      });
-    }
-
-    return res.status(200).json({
-      message: `Delivery status updated to ${status} & email sent`,
+    //  Respond immediately (non-blocking)
+    res.status(200).json({
+      message: `Delivery status updated to ${status}`,
       delivery
     });
 
+    //  Background: fetch users + send email
+    (async () => {
+      try {
+        const [customer, rider] = await Promise.all([
+          userModel.findById(delivery.ownerId),
+          userModel.findById(delivery.riderId)
+        ]);
+
+        if (customer && rider) {
+          await transporter.sendMail({
+            from: process.env.SENDER_EMAIL,
+            to: customer.email,
+            subject: `Delivery has been ${status}`,
+            html: `
+              <h2>Hello ${customer.fullName},</h2>
+              <p>Your delivery request has been <b>${status}</b> by rider <b>${rider.fullName}</b>.</p>
+              <br/>
+              <p>Thank you for using our service!</p>
+            `
+          });
+          console.log(` Status update email sent to ${customer.email}`);
+        }
+      } catch (bgError) {
+        console.error("Background email error:", bgError.message);
+      }
+    })();
+
   } catch (error) {
-    return res.status(400).json({ error: error.message });
+    return res.status(500).json({ error: error.message });
   }
 };
 
