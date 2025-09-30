@@ -1,4 +1,5 @@
 const axios = require("axios");
+const express = require("express");
 const crypto = require("crypto");
 require("dotenv").config();
 
@@ -21,7 +22,8 @@ const initializePayment = async (req, res) => {
       "https://api.paystack.co/transaction/initialize",
       {
         email: userEmail,
-        amount: delivery.cost * 100 // Paystack expects kobo
+        amount: delivery.cost * 100, // Paystack expects kobo
+        metadata: { deliveryId } // 👈 send deliveryId to webhook
       },
       {
         headers: {
@@ -45,9 +47,11 @@ const initializePayment = async (req, res) => {
 const paystackWebhook = async (req, res) => {
   try {
     const secret = process.env.PAYSTACK_SECRET_KEY;
+
+    // ✅ req.body is a Buffer because of express.raw()
     const hash = crypto
       .createHmac("sha512", secret)
-      .update(JSON.stringify(req.body))
+      .update(req.body) // raw buffer
       .digest("hex");
 
     // Validate Paystack signature
@@ -55,22 +59,24 @@ const paystackWebhook = async (req, res) => {
       return res.sendStatus(401); // Unauthorized
     }
 
+    // ✅ Parse raw buffer into JSON
+    const eventData = JSON.parse(req.body.toString());
+
     console.log("=============== Webhook Response ====================");
-    console.log(req.body);
+    console.log(eventData);
 
-    const event = req.body.event;
-
-    if (event === "charge.success") {
-      const reference = req.body.data.reference;
+    if (eventData.event === "charge.success") {
+      const deliveryId = eventData.data.metadata.deliveryId; // 👈 safe now
+      const reference = eventData.data.reference;
 
       // Mark delivery as paid
-      const delivery = await deliveryModel.findOneAndUpdate(
-        { _id: req.body.data.metadata.deliveryId }, // ensure you passed deliveryId in metadata during init
-        { status: "paid" },
+      const delivery = await deliveryModel.findByIdAndUpdate(
+        deliveryId,
+        { status: "paid", paymentReference: reference },
         { new: true }
       );
 
-      console.log("Delivery payment confirmed:", delivery);
+      console.log("✅ Delivery payment confirmed:", delivery);
     }
 
     return res.sendStatus(200); // ACK to Paystack

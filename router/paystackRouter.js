@@ -9,6 +9,13 @@ const router = express.Router();
 router.use(checkIfLoggedIn);
 
 router.post("/initialize-payment", roleBasedAccess(["customer"]), paystackController.initializePayment);
-router.post("/webhook", paystackController.paystackWebhook);
+
+
+router.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  paystackController.paystackWebhook
+);
+
 
 module.exports = router;
