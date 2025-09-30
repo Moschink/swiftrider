@@ -18,7 +18,7 @@ router.get("/location/:id", roleBasedAccess(["admin","customer"]), customerContr
 router.get("/view-deliveries", roleBasedAccess(["rider"]), riderController.viewPendingDeliveries);
 router.patch("/accept-delivery", roleBasedAccess(["rider"]), riderController.acceptDelivery);
 router.post("/update-delivery", roleBasedAccess(["rider"]), riderController.updateDeliveryStatus);
-router.put("/location", roleBasedAccess(["rideer"]), riderController.updateLocation)
+router.put("/location", roleBasedAccess(["rider"]), riderController.updateLocation)
 
 
 module.exports = router
