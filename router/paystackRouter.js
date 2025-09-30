@@ -3,18 +3,20 @@ const paystackController = require("../controller/paystackController");
 const roleBasedAccess = require("../middleware/roleBasedAccess");
 const checkIfLoggedIn = require("../middleware/checkIfLoggedIn");
 
-
 const router = express.Router();
 
-router.use(checkIfLoggedIn);
-
-router.post("/initialize-payment", roleBasedAccess(["customer"]), paystackController.initializePayment);
-
-
+// ================= INITIALIZE PAYMENT =================
+// ✅ Protected: only logged-in customers can initialize
 router.post(
-  "/webhook",
-  paystackController.paystackWebhook
+  "/initialize-payment",
+  checkIfLoggedIn,
+  roleBasedAccess(["customer"]),
+  paystackController.initializePayment
 );
 
+// ================= WEBHOOK =================
+// ❌ Do NOT protect this route (Paystack is external, not logged in)
+// Mounted in app.js with express.raw()
+router.post("/webhook", paystackController.paystackWebhook);
 
 module.exports = router;
