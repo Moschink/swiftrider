@@ -1,6 +1,6 @@
 const deliveryModel = require("../schema/delivery");
 const userModel = require("../schema/user");
-const transporter = require("../utility/sendEmail")
+const sendEmail = require("../utility/sendEmail")
 const joi = require("joi");
 require("dotenv").config();
 
@@ -41,33 +41,35 @@ const acceptDelivery = async (req, res) => {
       delivery
     });
 
-    //  Background work: fetch users + send email
     (async () => {
-      try {
-        const [customer, rider] = await Promise.all([
-          userModel.findById(delivery.ownerId),
-          userModel.findById(delivery.riderId)
-        ]);
+  try {
+    const [customer, rider] = await Promise.all([
+      userModel.findById(delivery.ownerId),
+      userModel.findById(delivery.riderId)
+    ]);
 
-        if (customer && rider) {
-          await transporter.sendMail({
-            from: process.env.SENDER_EMAIL,
-            to: customer.email,
-            subject: "Delivery Accepted",
-            html: `
-              <h2>Hello ${customer.fullName},</h2>
-              <p>Your delivery request has been <b>accepted</b> by <b>${rider.fullName}</b>.</p>
-              <p>Please prepare your package. The rider will contact you shortly.</p>
-              <br/>
-              <p>Thank you for using our service!</p>
-            `
-          });
-          console.log(` Email sent to ${customer.email}`);
-        }
-      } catch (bgError) {
-        console.error("Background email error:", bgError.message);
+    if (customer && rider) {
+      if (!customer.email) {
+        console.error("❌ Customer email missing:", customer);
+        return;
       }
-    })();
+
+      await sendEmail({
+        to: customer.email,
+        subject: "Delivery Accepted",
+        html: `
+          <h2>Hello ${customer.fullName},</h2>
+          <p>Your delivery request has been <b>accepted</b> by <b>${rider.fullName}</b>.</p>
+          <p>Please prepare your package. The rider will contact you shortly.</p>
+          <br/>
+          <p>Thank you for using our service!</p>
+        `
+      });
+    }
+  } catch (bgError) {
+    console.error("Background email error:", bgError.message);
+  }
+})();
 
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -123,30 +125,42 @@ const updateDeliveryStatus = async (req, res) => {
 
     //  Background: fetch users + send email
     (async () => {
-      try {
-        const [customer, rider] = await Promise.all([
-          userModel.findById(delivery.ownerId),
-          userModel.findById(delivery.riderId)
-        ]);
+  try {
+    const [customer, rider] = await Promise.all([
+      userModel.findById(delivery.ownerId),
+      userModel.findById(delivery.riderId)
+    ]);
 
-        if (customer && rider) {
-          await transporter.sendMail({
-            from: process.env.SENDER_EMAIL,
-            to: customer.email,
-            subject: `Delivery has been ${status}`,
-            html: `
-              <h2>Hello ${customer.fullName},</h2>
-              <p>Your delivery request has been <b>${status}</b> by rider <b>${rider.fullName}</b>.</p>
-              <br/>
-              <p>Thank you for using our service!</p>
-            `
-          });
-          console.log(` Status update email sent to ${customer.email}`);
-        }
-      } catch (bgError) {
-        console.error("Background email error:", bgError.message);
-      }
-    })();
+    if (!customer) {
+      console.error(" Customer not found in DB:", delivery.ownerId);
+      return;
+    }
+    if (!customer.email) {
+      console.error(" Customer email missing:", customer);
+      return;
+    }
+    if (!rider) {
+      console.error(" Rider not found in DB:", delivery.riderId);
+    }
+
+    await sendEmail({
+      to: customer.email,
+      subject: `Delivery has been ${status}`,
+      html: `
+        <h2>Hello ${customer.fullName},</h2>
+        <p>Your delivery request has been <b>${status}</b> by rider <b>${rider.fullName}</b>.</p>
+        <br/>
+        <p>Thank you for using our service!</p>
+      `
+    });
+
+    console.log(` Status update email sent to ${customer.email}`);
+
+  } catch (bgError) {
+    console.error(" Background email error:", bgError.response?.body || bgError.message);
+  }
+})();
+
 
   } catch (error) {
     return res.status(500).json({ error: error.message });
